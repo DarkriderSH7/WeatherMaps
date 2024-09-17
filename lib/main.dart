@@ -108,17 +108,19 @@ class _LocationInputPageState extends State<LocationInputPage> {
                       locations.add(points[pointIndex]);
                     }
 
-                    // Fetch weather data for each interval
-                    final weatherData = await fetchWeatherData(
-                        locations, startHour, startMinute, times);
+                    // Fetch weather data and reverse geocode region names
+                    final weatherAndRegionData =
+                        await fetchWeatherAndRegionData(
+                            locations, startHour, startMinute, times);
 
-                    // Navigate to the second screen with weather data and route
+                    // Navigate to the second screen with weather data, region names, and route
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => WeatherScreen(
-                          weatherData: weatherData,
+                          weatherAndRegionData: weatherAndRegionData,
                           points: points,
+                          intervalLocations: locations,
                         ),
                       ),
                     );
@@ -184,11 +186,16 @@ class _LocationInputPageState extends State<LocationInputPage> {
     return poly;
   }
 
-  Future<List<Map<String, dynamic>>> fetchWeatherData(List<LatLng> locations,
-      int startHour, int startMinute, List<int> times) async {
-    final apiKey =
-        '8048ad7b856423eff0e08e7df8062a9d'; // Replace with your OpenWeather API key
-    List<Map<String, dynamic>> weatherDataList = [];
+  Future<List<Map<String, dynamic>>> fetchWeatherAndRegionData(
+      List<LatLng> locations,
+      int startHour,
+      int startMinute,
+      List<int> times) async {
+    final weatherApiKey =
+        '8048ad7b856423eff0e08e7df8062a9d'; // OpenWeather API key
+    final geocodingApiKey =
+        'AIzaSyDDzd6j3ZQyf1Xtl-Ic2BggOUEKCEZVrHQ'; // Google Maps API key
+    List<Map<String, dynamic>> weatherAndRegionData = [];
 
     DateTime currentTime = DateTime.now();
     DateTime journeyStartTime = DateTime(
@@ -205,32 +212,86 @@ class _LocationInputPageState extends State<LocationInputPage> {
 
       // Adjust the timestamp for the time at this interval
       DateTime forecastTime = journeyStartTime.add(Duration(minutes: times[i]));
-      int unixTime = forecastTime.millisecondsSinceEpoch ~/
-          1000; // Convert to Unix timestamp
+      int unixTime =
+          forecastTime.millisecondsSinceEpoch ~/ 1000; // Unix timestamp
 
-      final url = Uri.parse(
-          'https://api.openweathermap.org/data/3.0/onecall?lat=$lat&lon=$lon&dt=$unixTime&exclude=minutely,daily,alerts&units=metric&appid=$apiKey');
+      // Fetch weather data
+      final weatherUrl = Uri.parse(
+          'https://api.openweathermap.org/data/3.0/onecall?lat=$lat&lon=$lon&dt=$unixTime&exclude=minutely,daily,alerts&units=metric&appid=$weatherApiKey');
+      final weatherResponse = await http.get(weatherUrl);
 
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        weatherDataList.add(data);
-      } else {
+      if (weatherResponse.statusCode != 200) {
         throw Exception('Failed to fetch weather data');
       }
+
+      final weatherData = json.decode(weatherResponse.body);
+
+      // Fetch region name using Reverse Geocoding
+      final geocodingUrl = Uri.parse(
+          'https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lon&key=$geocodingApiKey');
+      final geocodingResponse = await http.get(geocodingUrl);
+
+      if (geocodingResponse.statusCode != 200) {
+        throw Exception('Failed to fetch region name');
+      }
+
+      final geocodingData = json.decode(geocodingResponse.body);
+      String regionName = "Unknown Region"; // Default fallback
+
+      try {
+        List<dynamic> addressComponents =
+            geocodingData['results'][0]['address_components'];
+
+        // Try to find the "locality" (city) or fallback to other administrative areas
+        var locality = addressComponents.firstWhere(
+            (component) => component['types'].contains('locality'),
+            orElse: () => null);
+
+        if (locality != null) {
+          regionName = locality['long_name'];
+        } else {
+          // Try administrative area (state or province)
+          var adminArea = addressComponents.firstWhere(
+              (component) =>
+                  component['types'].contains('administrative_area_level_1') ||
+                  component['types'].contains('administrative_area_level_2'),
+              orElse: () => null);
+
+          if (adminArea != null) {
+            regionName = adminArea['long_name'];
+          } else {
+            // Fallback to the first part of the address as a last resort
+            regionName = addressComponents.isNotEmpty
+                ? addressComponents[0]['long_name']
+                : "Unknown Region";
+          }
+        }
+      } catch (e) {
+        print("Error extracting region name: $e");
+      }
+
+      // Store the weather data along with the region name
+      weatherAndRegionData.add({
+        'weather': weatherData,
+        'region': regionName,
+        'time': forecastTime.toLocal(), // Save the time for reference
+      });
     }
 
-    return weatherDataList;
+    return weatherAndRegionData;
   }
 }
 
-// Weather Screen to display the weather information
+// Weather Screen to display the weather information along with region names
 class WeatherScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> weatherData;
+  final List<Map<String, dynamic>> weatherAndRegionData;
   final List<LatLng> points;
+  final List<LatLng> intervalLocations;
 
-  WeatherScreen({required this.weatherData, required this.points});
+  WeatherScreen(
+      {required this.weatherAndRegionData,
+      required this.points,
+      required this.intervalLocations});
 
   @override
   Widget build(BuildContext context) {
@@ -239,15 +300,19 @@ class WeatherScreen extends StatelessWidget {
         title: Text('Weather Info Along the Route'),
       ),
       body: ListView.builder(
-        itemCount: weatherData.length,
+        itemCount: weatherAndRegionData.length,
         itemBuilder: (context, index) {
-          final data = weatherData[index];
-          final temperature =
-              data['current']['temp'].toStringAsFixed(1); // One decimal place
-          final description = data['current']['weather'][0]['description'];
+          final data = weatherAndRegionData[index];
+          final weather = data['weather'];
+          final region = data['region'];
+          final time = data['time'];
+          final temperature = weather['current']['temp']
+              .toStringAsFixed(1); // One decimal place
+          final description = weather['current']['weather'][0]['description'];
           return ListTile(
-            title: Text('Weather at Interval ${index + 1}:'),
-            subtitle: Text('Temperature: $temperature °C, $description'),
+            title: Text('Weather at Interval ${index + 1}: $region'),
+            subtitle: Text(
+                'Temperature: $temperature °C, $description\nTime: ${time.toLocal()}'),
           );
         },
       ),
@@ -258,7 +323,8 @@ class WeatherScreen extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => MapScreen(points: points),
+                builder: (context) => MapScreen(
+                    points: points, intervalLocations: intervalLocations),
               ),
             );
           },
@@ -269,11 +335,12 @@ class WeatherScreen extends StatelessWidget {
   }
 }
 
-// Map Screen to display the Google Map with the route
+// Map Screen to display the Google Map with the route and markers
 class MapScreen extends StatelessWidget {
   final List<LatLng> points;
+  final List<LatLng> intervalLocations;
 
-  MapScreen({required this.points});
+  MapScreen({required this.points, required this.intervalLocations});
 
   @override
   Widget build(BuildContext context) {
@@ -294,6 +361,18 @@ class MapScreen extends StatelessWidget {
             width: 5,
           ),
         },
+        markers: intervalLocations.asMap().entries.map((entry) {
+          int index = entry.key;
+          LatLng point = entry.value;
+          return Marker(
+            markerId: MarkerId('interval_marker_$index'),
+            position: point,
+            infoWindow: InfoWindow(
+              title: 'Interval ${index + 1}',
+              snippet: 'Location for 30-minute interval',
+            ),
+          );
+        }).toSet(),
       ),
     );
   }
