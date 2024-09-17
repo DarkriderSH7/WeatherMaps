@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() {
   runApp(MyApp());
@@ -191,10 +192,8 @@ class _LocationInputPageState extends State<LocationInputPage> {
       int startHour,
       int startMinute,
       List<int> times) async {
-    final weatherApiKey =
-        '8048ad7b856423eff0e08e7df8062a9d'; // OpenWeather API key
-    final geocodingApiKey =
-        'AIzaSyDDzd6j3ZQyf1Xtl-Ic2BggOUEKCEZVrHQ'; // Google Maps API key
+    final weatherApiKey = dotenv.env['WEATHER_API_KEY']; // Use env variable
+    final geocodingApiKey = dotenv.env['GEOCODING_API_KEY']; // Use env variable
     List<Map<String, dynamic>> weatherAndRegionData = [];
 
     DateTime currentTime = DateTime.now();
@@ -210,10 +209,8 @@ class _LocationInputPageState extends State<LocationInputPage> {
       final lat = locations[i].latitude;
       final lon = locations[i].longitude;
 
-      // Adjust the timestamp for the time at this interval
       DateTime forecastTime = journeyStartTime.add(Duration(minutes: times[i]));
-      int unixTime =
-          forecastTime.millisecondsSinceEpoch ~/ 1000; // Unix timestamp
+      int unixTime = forecastTime.millisecondsSinceEpoch ~/ 1000;
 
       // Fetch weather data
       final weatherUrl = Uri.parse(
@@ -236,45 +233,14 @@ class _LocationInputPageState extends State<LocationInputPage> {
       }
 
       final geocodingData = json.decode(geocodingResponse.body);
-      String regionName = "Unknown Region"; // Default fallback
+      String regionName = geocodingData['results'][0]['address_components']
+          .firstWhere((component) =>
+              component['types'].contains('locality'))['long_name'];
 
-      try {
-        List<dynamic> addressComponents =
-            geocodingData['results'][0]['address_components'];
-
-        // Try to find the "locality" (city) or fallback to other administrative areas
-        var locality = addressComponents.firstWhere(
-            (component) => component['types'].contains('locality'),
-            orElse: () => null);
-
-        if (locality != null) {
-          regionName = locality['long_name'];
-        } else {
-          // Try administrative area (state or province)
-          var adminArea = addressComponents.firstWhere(
-              (component) =>
-                  component['types'].contains('administrative_area_level_1') ||
-                  component['types'].contains('administrative_area_level_2'),
-              orElse: () => null);
-
-          if (adminArea != null) {
-            regionName = adminArea['long_name'];
-          } else {
-            // Fallback to the first part of the address as a last resort
-            regionName = addressComponents.isNotEmpty
-                ? addressComponents[0]['long_name']
-                : "Unknown Region";
-          }
-        }
-      } catch (e) {
-        print("Error extracting region name: $e");
-      }
-
-      // Store the weather data along with the region name
       weatherAndRegionData.add({
         'weather': weatherData,
         'region': regionName,
-        'time': forecastTime.toLocal(), // Save the time for reference
+        'time': forecastTime.toLocal(),
       });
     }
 
