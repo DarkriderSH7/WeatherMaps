@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
   runApp(MyApp());
 }
 
@@ -142,8 +143,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
 
   Future<Map<String, dynamic>> getDirections(
       String origin, String destination) async {
-    final apiKey =
-        'AIzaSyDDzd6j3ZQyf1Xtl-Ic2BggOUEKCEZVrHQ'; // Replace with your Google Maps API key
+    final apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/directions/json?origin=$origin&destination=$destination&key=$apiKey',
     );
@@ -192,8 +192,8 @@ class _LocationInputPageState extends State<LocationInputPage> {
       int startHour,
       int startMinute,
       List<int> times) async {
-    final weatherApiKey = dotenv.env['WEATHER_API_KEY']; // Use env variable
-    final geocodingApiKey = dotenv.env['GEOCODING_API_KEY']; // Use env variable
+    final weatherApiKey = dotenv.env['OPEN_WEATHER_MAP_API_KEY'];
+    final geocodingApiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
     List<Map<String, dynamic>> weatherAndRegionData = [];
 
     DateTime currentTime = DateTime.now();
@@ -209,16 +209,22 @@ class _LocationInputPageState extends State<LocationInputPage> {
       final lat = locations[i].latitude;
       final lon = locations[i].longitude;
 
+      print('--- Interval ${i + 1} ---');
+      print('Latitude: $lat, Longitude: $lon');
+
       DateTime forecastTime = journeyStartTime.add(Duration(minutes: times[i]));
       int unixTime = forecastTime.millisecondsSinceEpoch ~/ 1000;
 
       // Fetch weather data
       final weatherUrl = Uri.parse(
           'https://api.openweathermap.org/data/3.0/onecall?lat=$lat&lon=$lon&dt=$unixTime&exclude=minutely,daily,alerts&units=metric&appid=$weatherApiKey');
+      print('Weather API URL: $weatherUrl');
       final weatherResponse = await http.get(weatherUrl);
+      print('Weather API status code: ${weatherResponse.statusCode}');
 
       if (weatherResponse.statusCode != 200) {
-        throw Exception('Failed to fetch weather data');
+        print('Failed to fetch weather data');
+        continue;
       }
 
       final weatherData = json.decode(weatherResponse.body);
@@ -226,16 +232,68 @@ class _LocationInputPageState extends State<LocationInputPage> {
       // Fetch region name using Reverse Geocoding
       final geocodingUrl = Uri.parse(
           'https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lon&key=$geocodingApiKey');
+      print('Geocoding API URL: $geocodingUrl');
       final geocodingResponse = await http.get(geocodingUrl);
+      print('Geocoding API status code: ${geocodingResponse.statusCode}');
 
       if (geocodingResponse.statusCode != 200) {
-        throw Exception('Failed to fetch region name');
+        print('Failed to fetch region name');
+        continue;
       }
 
       final geocodingData = json.decode(geocodingResponse.body);
-      String regionName = geocodingData['results'][0]['address_components']
-          .firstWhere((component) =>
-              component['types'].contains('locality'))['long_name'];
+      print('Geocoding API response: ${geocodingData}');
+
+      String regionName = 'Unknown Region';
+
+      if (geocodingData['status'] == 'OK' &&
+          geocodingData['results'].isNotEmpty) {
+        try {
+          final components = geocodingData['results'][0]['address_components'];
+          print('Address components: $components');
+
+          var regionComponent;
+          List<String> desiredTypes = [
+            'locality',
+            'sublocality',
+            'postal_town',
+            'neighborhood',
+            'administrative_area_level_2',
+            'administrative_area_level_1',
+            'country'
+          ];
+
+          for (var type in desiredTypes) {
+            regionComponent = components.firstWhere(
+              (component) {
+                List<dynamic> types = component['types'] as List<dynamic>;
+                return types.contains(type);
+              },
+              orElse: () => null,
+            );
+
+            if (regionComponent != null) {
+              regionName = regionComponent['long_name'];
+              print('Found region name: $regionName');
+              break;
+            }
+          }
+
+          // Fallback to formatted address
+          if (regionComponent == null) {
+            regionName = geocodingData['results'][0]['formatted_address'];
+            print('Using formatted address as region name: $regionName');
+          }
+        } catch (e) {
+          print('Error extracting region name: $e');
+        }
+      } else {
+        print('Geocoding API returned status: ${geocodingData['status']}');
+        if (geocodingData.containsKey('error_message')) {
+          print(
+              'Geocoding API error message: ${geocodingData['error_message']}');
+        }
+      }
 
       weatherAndRegionData.add({
         'weather': weatherData,
