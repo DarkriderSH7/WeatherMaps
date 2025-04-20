@@ -14,7 +14,7 @@ dependencies:
   http: ^0.13.5
   flutter_dotenv: ^5.0.2
   numberpicker: ^2.1.1
-  flutter_google_places: ^0.4.0
+  flutter_google_places: ^0.3.0
   google_maps_webservice: ^0.0.20-nullsafety.5
   google_api_headers: ^1.0.1
   package_info_plus: ^3.0.2 # Add this line
@@ -31,3 +31,5 @@ flutter:
 
   assets:
     - .env
+dependency_overrides:
+  win32: ^5.7.0
