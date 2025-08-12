@@ -14,10 +14,10 @@ dependencies:
   http: ^0.13.5
   flutter_dotenv: ^5.0.2
   numberpicker: ^2.1.1
-  flutter_google_places: ^0.3.0
   google_maps_webservice: ^0.0.20-nullsafety.5
-  google_api_headers: ^1.0.1
-  package_info_plus: ^3.0.2 # Add this line
+  google_api_headers: ^4.5.4
+  package_info_plus: ^8.0.0
+  url_launcher: ^6.3.1
 
 
 

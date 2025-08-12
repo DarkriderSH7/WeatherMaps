@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:numberpicker/numberpicker.dart'; // Import the numberpicker package
+import 'package:url_launcher/url_launcher.dart'; // Add this import
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,8 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -26,6 +29,8 @@ class MyApp extends StatelessWidget {
 }
 
 class LocationInputPage extends StatefulWidget {
+  const LocationInputPage({super.key});
+
   @override
   _LocationInputPageState createState() => _LocationInputPageState();
 }
@@ -58,9 +63,8 @@ class _LocationInputPageState extends State<LocationInputPage> {
     );
 
     if (pickedTime != null) {
-      String formattedTime = pickedTime.hour.toString().padLeft(2, '0') +
-          ":" +
-          pickedTime.minute.toString().padLeft(2, '0');
+      String formattedTime =
+          "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
       setState(() {
         _startTimeController.text = formattedTime;
       });
@@ -76,7 +80,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text('Select Interval (minutes)'),
+              title: const Text('Select Interval (minutes)'),
               content: NumberPicker(
                 value: tempValue,
                 minValue: 1,
@@ -89,7 +93,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
               ),
               actions: <Widget>[
                 TextButton(
-                  child: Text('OK'),
+                  child: const Text('OK'),
                   onPressed: () {
                     Navigator.of(context).pop();
                     setState(() {
@@ -184,11 +188,11 @@ class _LocationInputPageState extends State<LocationInputPage> {
 
     // If the selected start time has already passed today, set it to tomorrow
     if (journeyStartTime.isBefore(currentTime)) {
-      journeyStartTime = journeyStartTime.add(Duration(days: 1));
+      journeyStartTime = journeyStartTime.add(const Duration(days: 1));
     }
 
     // Ensure that all forecast times are within the next 48 hours
-    final maxForecastDuration = 48 * 60; // 48 hours in minutes
+    const maxForecastDuration = 48 * 60; // 48 hours in minutes
 
     for (int i = 0; i < locations.length; i++) {
       final lat = locations[i].latitude;
@@ -224,7 +228,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
 
       // Extract hourly data
       List<dynamic> hourlyData = weatherData['hourly'];
-      if (hourlyData == null || hourlyData.isEmpty) {
+      if (hourlyData.isEmpty) {
         print('No hourly weather data available.');
         continue;
       }
@@ -259,7 +263,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
       }
 
       final geocodingData = json.decode(geocodingResponse.body);
-      print('Geocoding API response: ${geocodingData}');
+      print('Geocoding API response: $geocodingData');
 
       String regionName = 'Unknown Region';
 
@@ -326,7 +330,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Route Planner'),
+        title: const Text('Route Planner'),
       ),
       body: SingleChildScrollView(
         // To prevent overflow when keyboard appears
@@ -337,30 +341,30 @@ class _LocationInputPageState extends State<LocationInputPage> {
             // "To Location" TextField
             TextField(
               controller: _toController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'To Location',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.location_on),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             // "From Location" TextField
             TextField(
               controller: _froController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'From Location',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.my_location),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             // Start Time TextField with TimePicker
             GestureDetector(
               onTap: _selectStartTime,
               child: AbsorbPointer(
                 child: TextField(
                   controller: _startTimeController,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Start Time (24-hour format, e.g., 20:00)',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.access_time),
@@ -369,14 +373,14 @@ class _LocationInputPageState extends State<LocationInputPage> {
                 ),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             // Interval Picker TextField
             GestureDetector(
               onTap: _selectInterval,
               child: AbsorbPointer(
                 child: TextField(
                   controller: _intervalController,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Interval (minutes)',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.timer),
@@ -385,7 +389,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
                 ),
               ),
             ),
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
             // Submit Button with Loading Indicator
             SizedBox(
               width: double.infinity,
@@ -405,7 +409,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
                             startTime.isEmpty ||
                             intervalText.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                                 content: Text('Please fill in all fields.')),
                           );
                           return;
@@ -415,7 +419,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
                         final interval = int.tryParse(intervalText);
                         if (interval == null || interval < 1 || interval > 60) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                                 content: Text(
                                     'Interval must be between 1 and 60 minutes.')),
                           );
@@ -426,7 +430,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
                         final startTimeParts = startTime.split(":");
                         if (startTimeParts.length != 2) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                                 content: Text(
                                     'Start Time must be in HH:MM format (24-hour).')),
                           );
@@ -442,7 +446,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
                             startMinute < 0 ||
                             startMinute > 59) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                                 content: Text(
                                     'Start Time must be a valid 24-hour time (e.g., 20:00).')),
                           );
@@ -458,8 +462,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
                           final directions =
                               await getDirections(froLocation, toLocation);
 
-                          if (directions != null &&
-                              directions['routes'] != null &&
+                          if (directions['routes'] != null &&
                               directions['routes'].isNotEmpty) {
                             final points = decodePolyline(directions['routes']
                                 [0]['overview_polyline']['points']);
@@ -477,8 +480,9 @@ class _LocationInputPageState extends State<LocationInputPage> {
                                 i += interval) {
                               int pointIndex =
                                   (i / travelDuration * points.length).toInt();
-                              if (pointIndex >= points.length)
+                              if (pointIndex >= points.length) {
                                 pointIndex = points.length - 1;
+                              }
                               times.add(i);
                               locations.add(points[pointIndex]);
                             }
@@ -490,7 +494,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
 
                             if (weatherAndRegionData.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
+                                const SnackBar(
                                     content: Text(
                                         'No weather data available for the selected intervals.')),
                               );
@@ -514,7 +518,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
                             );
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
+                              const SnackBar(
                                   content: Text(
                                       'No routes found for the specified locations.')),
                             );
@@ -522,7 +526,7 @@ class _LocationInputPageState extends State<LocationInputPage> {
                         } catch (e) {
                           print('Error fetching directions: $e');
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                                 content: Text(
                                     'Error fetching directions. Please try again.')),
                           );
@@ -533,14 +537,14 @@ class _LocationInputPageState extends State<LocationInputPage> {
                         });
                       },
                 style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 15),
-                  textStyle: TextStyle(fontSize: 18),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  textStyle: const TextStyle(fontSize: 18),
                 ),
                 child: isLoading
-                    ? CircularProgressIndicator(
+                    ? const CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       )
-                    : Text('Submit'),
+                    : const Text('Submit'),
               ),
             ),
           ],
@@ -557,21 +561,63 @@ class WeatherScreen extends StatelessWidget {
   final List<LatLng> intervalLocations;
   final int interval;
 
-  WeatherScreen({
+  const WeatherScreen({
+    super.key,
     required this.weatherAndRegionData,
     required this.points,
     required this.intervalLocations,
     required this.interval,
   });
 
+  // Helper to launch Google Maps navigation
+  void _launchNavigation(BuildContext context) async {
+    print('Navigate button pressed');
+    if (points.isEmpty) {
+      print('No points available for navigation');
+      return;
+    }
+    final start = points.first;
+    final end = points.last;
+    final gmapsAppUrl = Uri.parse(
+        'google.navigation:q=${end.latitude},${end.longitude}&mode=d'); // Try to open in Google Maps app
+    final gmapsWebUrl = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&origin=${start.latitude},${start.longitude}&destination=${end.latitude},${end.longitude}&travelmode=driving');
+
+    try {
+      print('Trying to launch Google Maps app with: $gmapsAppUrl');
+      if (await canLaunchUrl(gmapsAppUrl)) {
+        print('Can launch Google Maps app, launching...');
+        await launchUrl(gmapsAppUrl, mode: LaunchMode.externalApplication);
+        print('Launched Google Maps app');
+        return;
+      } else {
+        print('Cannot launch Google Maps app URI');
+      }
+    } catch (e) {
+      print('Error launching Google Maps app: $e');
+    }
+    // Fallback to browser
+    print('Trying to launch Google Maps web URL: $gmapsWebUrl');
+    if (await canLaunchUrl(gmapsWebUrl)) {
+      print('Can launch Google Maps web URL, launching...');
+      await launchUrl(gmapsWebUrl, mode: LaunchMode.externalApplication);
+      print('Launched Google Maps web URL');
+    } else {
+      print('Cannot launch Google Maps web URL');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch Google Maps.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Weather Info Along the Route'),
+        title: const Text('Weather Info Along the Route'),
       ),
       body: weatherAndRegionData.isEmpty
-          ? Center(
+          ? const Center(
               child: Text(
                 'No weather data available.',
                 style: TextStyle(fontSize: 18),
@@ -588,9 +634,10 @@ class WeatherScreen extends StatelessWidget {
                     weather['temp'].toStringAsFixed(1); // One decimal place
                 final description = weather['weather'][0]['description'];
                 return Card(
-                  margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   child: ListTile(
-                    leading: Icon(Icons.cloud),
+                    leading: const Icon(Icons.cloud),
                     title: Text('Interval ${index + 1}: $region'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,28 +651,46 @@ class WeatherScreen extends StatelessWidget {
                 );
               },
             ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ElevatedButton.icon(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MapScreen(
-                  points: points,
-                  intervalLocations: intervalLocations,
-                  interval: interval,
-                ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MapScreen(
+                      points: points,
+                      intervalLocations: intervalLocations,
+                      interval: interval,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.map),
+              label: const Text('View Route on Map'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                textStyle: const TextStyle(fontSize: 18),
               ),
-            );
-          },
-          icon: Icon(Icons.map),
-          label: Text('View Route on Map'),
-          style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.symmetric(vertical: 15),
-            textStyle: TextStyle(fontSize: 18),
+            ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: ElevatedButton.icon(
+              onPressed: () => _launchNavigation(context),
+              icon: const Icon(Icons.directions_car),
+              label: const Text('Navigate in Google Maps'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                textStyle: const TextStyle(fontSize: 18),
+                backgroundColor: Colors.green,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -637,7 +702,8 @@ class MapScreen extends StatelessWidget {
   final List<LatLng> intervalLocations;
   final int interval;
 
-  MapScreen({
+  const MapScreen({
+    super.key,
     required this.points,
     required this.intervalLocations,
     required this.interval,
@@ -647,7 +713,7 @@ class MapScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     Set<Polyline> polylines = {
       Polyline(
-        polylineId: PolylineId("route"),
+        polylineId: const PolylineId("route"),
         points: points,
         color: Colors.blue,
         width: 5,
@@ -670,7 +736,7 @@ class MapScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Route Map'),
+        title: const Text('Route Map'),
       ),
       body: GoogleMap(
         initialCameraPosition: CameraPosition(
